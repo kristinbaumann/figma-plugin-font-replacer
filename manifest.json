@@ -1,0 +1,7 @@
+{
+  "name": "Figma To Google Slides",
+  "id": "738840446766071906",
+  "api": "1.0.0",
+  "main": "code.js",
+  "ui": "ui.html"
+}
