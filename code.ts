@@ -1,33 +1,89 @@
-// This plugin will open a modal to prompt the user to enter a number, and
-// it will then create that many rectangles on the screen.
-
-// This file holds the main code for the plugins. It has access to the *document*.
-// You can access browser APIs in the <script> tag inside "ui.html" which has a
-// full browser enviroment (see documentation).
-
-// This shows the HTML page in "ui.html".
 figma.showUI(__html__);
 
-// Calls to "parent.postMessage" from within the HTML page will trigger this
-// callback. The callback will be passed the "pluginMessage" property of the
-// posted message.
-figma.ui.onmessage = msg => {
-  // One way of distinguishing between different types of messages sent from
-  // your HTML page is to use an object with a "type" property like this.
-  if (msg.type === 'create-rectangles') {
-    const nodes: SceneNode[] = [];
-    for (let i = 0; i < msg.count; i++) {
-      const rect = figma.createRectangle();
-      rect.x = i * 150;
-      rect.fills = [{type: 'SOLID', color: {r: 1, g: 0.5, b: 0}}];
-      figma.currentPage.appendChild(rect);
-      nodes.push(rect);
+const initialSelection = figma.currentPage.selection.slice(0);
+
+function getTextNodesFrom(selection) {
+  var nodes = [];
+  function childrenIterator(node) {
+    if (node.children) {
+      node.children.forEach(child => {
+        childrenIterator(child);
+      });
+    } else {
+      if (node.type === "TEXT")
+        nodes.push({
+          id: node.id,
+          characters: node.characters,
+          font: node.fontName
+        });
     }
-    figma.currentPage.selection = nodes;
-    figma.viewport.scrollAndZoomIntoView(nodes);
   }
 
-  // Make sure to close the plugin when you're done. Otherwise the plugin will
-  // keep running, which shows the cancel button at the bottom of the screen.
+  selection.forEach(item => childrenIterator(item));
+  return nodes;
+}
+
+function renderContent(existingFonts) {
+  var message = { type: "render", existingFonts };
+  figma.ui.postMessage(message);
+}
+
+function getExistingFonts(selection) {
+  const textNodes = getTextNodesFrom(selection);
+
+  const existingFonts: FontName[] = [];
+
+  textNodes.map(item => {
+    const existingItem = existingFonts.filter(
+      el => el.family === item.font.family && el.style === item.font.style
+    );
+    if (existingItem.length === 0) {
+      existingFonts.push(item.font);
+    }
+  });
+  return existingFonts;
+}
+const existingFonts = getExistingFonts(initialSelection);
+renderContent(existingFonts);
+
+figma.ui.onmessage = async msg => {
+  if (msg.type === "replace-font") {
+    // get node selection
+    const selection = figma.currentPage.selection;
+
+    // TODO: add check when no selection happens (and add comment in UI)
+
+    // font to be replaced
+    const oldFont = existingFonts[msg.selectedOldFontId];
+    await figma.loadFontAsync(oldFont);
+
+    // TODO: get new font from UI
+    // new font
+    const newFont = {
+      style: "Regular",
+      family: "Roboto"
+    } as FontName;
+    await figma.loadFontAsync(newFont);
+
+    // get all text nodes
+    selection.forEach(async node => {
+      if (node.type === "TEXT") {
+        // check if existing font is the font to be replaced
+        console.log("oldFont", oldFont, "newFont", newFont);
+        if (
+          (node.fontName as FontName).family === oldFont.family &&
+          (node.fontName as FontName).style === oldFont.style
+        ) {
+          node.setRangeFontName(0, node.characters.length, newFont);
+          console.log("--- Replaced!");
+        } else {
+          console.log("*** Font not selected for replacement");
+        }
+      }
+    });
+
+    console.log("DONE!");
+  }
+
   figma.closePlugin();
 };
