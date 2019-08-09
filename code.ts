@@ -1,3 +1,11 @@
+// DEFINITIONS
+interface FontNameCounter {
+  readonly family: string;
+  readonly style: string;
+  amount: number;
+}
+
+// FUNCTIONS
 function getTextNodesFrom(selection) {
   const nodes = [];
   function childrenIterator(node) {
@@ -19,20 +27,25 @@ function getTextNodesFrom(selection) {
 }
 
 function getExistingFonts(textNodes) {
-  const existingFonts: FontName[] = [];
-  textNodes.map(item => {
+  const existingFonts: FontNameCounter[] = [];
+  textNodes.forEach(({ font }) => {
+    const item = { ...font, amount: 1 };
     const existingItem = existingFonts.filter(
-      el => el.family === item.font.family && el.style === item.font.style
+      el => el.family === item.family && el.style === item.style
     );
     if (existingItem.length === 0) {
-      existingFonts.push(item.font);
+      existingFonts.push(item);
+    } else {
+      existingItem[0].amount += 1;
     }
   });
+  // sorting
   existingFonts.sort((a, b) => {
     if (a.family < b.family) return -1;
     if (a.family > b.family) return 1;
     return 0;
   });
+
   return existingFonts;
 }
 
@@ -42,11 +55,14 @@ function renderExistingFonts(existingFonts) {
 
 async function renderAvailableFonts() {
   let availableFonts = await figma.listAvailableFontsAsync();
-  availableFonts = availableFonts.filter(el => el.fontName.family[0] != ".");
+  availableFonts = availableFonts.filter(
+    el => el.fontName.family[0] != "?" && el.fontName.family[0] != "."
+  );
   figma.clientStorage.setAsync("available-fonts", availableFonts);
   figma.ui.postMessage({ type: "render-available-fonts", availableFonts });
 }
 
+// EXECUTION
 const initialSelection = figma.currentPage.selection.slice(0);
 const textNodes = getTextNodesFrom(initialSelection);
 
@@ -56,10 +72,12 @@ if (initialSelection.length === 0 || textNodes.length === 0) {
 } else {
   figma.showUI(__html__, { width: 320, height: 480 });
 
+  // get existing fonts
   const textNodes = getTextNodesFrom(initialSelection);
   const existingFonts = getExistingFonts(textNodes);
   renderExistingFonts(existingFonts);
 
+  // get available fonts
   renderAvailableFonts();
 
   figma.ui.onmessage = async msg => {
@@ -67,8 +85,12 @@ if (initialSelection.length === 0 || textNodes.length === 0) {
       // get node selection
       const selection = figma.currentPage.selection;
 
-      // font to be replaced
-      const oldFont = existingFonts[msg.selectedOldFontId];
+      // get old font
+      const oldFontCounter = existingFonts[msg.selectedOldFontId];
+      const oldFont = {
+        family: oldFontCounter.family,
+        style: oldFontCounter.style
+      } as FontName;
       await figma.loadFontAsync(oldFont);
 
       // get new font
@@ -79,18 +101,25 @@ if (initialSelection.length === 0 || textNodes.length === 0) {
         .fontName as FontName;
       await figma.loadFontAsync(newFont);
 
-      // get all text nodes
-      selection.forEach(async node => {
-        if (node.type === "TEXT") {
-          // check if existing font is the font to be replaced
-          if (
-            (node.fontName as FontName).family === oldFont.family &&
-            (node.fontName as FontName).style === oldFont.style
-          ) {
-            node.setRangeFontName(0, node.characters.length, newFont);
+      // replace all text nodes
+      function childrenIterator(node) {
+        if (node.children) {
+          node.children.forEach(child => {
+            childrenIterator(child);
+          });
+        } else {
+          if (node.type === "TEXT") {
+            // check if existing font is the font to be replaced
+            if (
+              (node.fontName as FontName).family === oldFont.family &&
+              (node.fontName as FontName).style === oldFont.style
+            ) {
+              node.setRangeFontName(0, node.characters.length, newFont);
+            }
           }
         }
-      });
+      }
+      selection.forEach(item => childrenIterator(item));
 
       console.log("DONE!");
     }
@@ -98,3 +127,5 @@ if (initialSelection.length === 0 || textNodes.length === 0) {
     figma.closePlugin();
   };
 }
+
+// TODO: show number of layers with that font

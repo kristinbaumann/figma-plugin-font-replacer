@@ -1062,7 +1062,9 @@
         return `
           <li class="item" idx="${idx}">
             <div class="icon icon--recent icon--blue"></div>
-  				<p class="type type--11-pos">${item.family} - ${item.style}</p>
+  				<p class="type type--11-pos">${item.family} - ${item.style} (${
+          item.amount
+        }x)</p>
   			</li>
   		`;
       }
