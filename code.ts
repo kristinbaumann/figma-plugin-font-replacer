@@ -18,12 +18,7 @@ function getTextNodesFrom(selection) {
   return nodes;
 }
 
-function renderExistingFonts(existingFonts) {
-  figma.ui.postMessage({ type: "render-existing-fonts", existingFonts });
-}
-
-function getExistingFonts(selection) {
-  const textNodes = getTextNodesFrom(selection);
+function getExistingFonts(textNodes) {
   const existingFonts: FontName[] = [];
   textNodes.map(item => {
     const existingItem = existingFonts.filter(
@@ -41,6 +36,10 @@ function getExistingFonts(selection) {
   return existingFonts;
 }
 
+function renderExistingFonts(existingFonts) {
+  figma.ui.postMessage({ type: "render-existing-fonts", existingFonts });
+}
+
 async function renderAvailableFonts() {
   let availableFonts = await figma.listAvailableFontsAsync();
   availableFonts = availableFonts.filter(el => el.fontName.family[0] != ".");
@@ -49,14 +48,16 @@ async function renderAvailableFonts() {
 }
 
 const initialSelection = figma.currentPage.selection.slice(0);
+const textNodes = getTextNodesFrom(initialSelection);
 
-if (initialSelection.length === 0) {
+if (initialSelection.length === 0 || textNodes.length === 0) {
   figma.showUI(__html__, { width: 320, height: 80 });
   figma.ui.postMessage({ type: "empty-selection" });
 } else {
   figma.showUI(__html__, { width: 320, height: 480 });
 
-  const existingFonts = getExistingFonts(initialSelection);
+  const textNodes = getTextNodesFrom(initialSelection);
+  const existingFonts = getExistingFonts(textNodes);
   renderExistingFonts(existingFonts);
 
   renderAvailableFonts();
