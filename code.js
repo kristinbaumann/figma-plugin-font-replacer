@@ -40,13 +40,7 @@ function getExistingFonts(textNodes) {
         }
     });
     // sorting
-    existingFonts.sort((a, b) => {
-        if (a.family < b.family)
-            return -1;
-        if (a.family > b.family)
-            return 1;
-        return 0;
-    });
+    existingFonts.sort((a, b) => b.amount - a.amount);
     return existingFonts;
 }
 function renderExistingFonts(existingFonts) {
@@ -68,7 +62,7 @@ if (initialSelection.length === 0 || textNodes.length === 0) {
     figma.ui.postMessage({ type: "empty-selection" });
 }
 else {
-    figma.showUI(__html__, { width: 320, height: 480 });
+    figma.showUI(__html__, { width: 500, height: 370 });
     // get existing fonts
     const textNodes = getTextNodesFrom(initialSelection);
     const existingFonts = getExistingFonts(textNodes);
@@ -109,9 +103,7 @@ else {
                 }
             }
             selection.forEach(item => childrenIterator(item));
-            console.log("DONE!");
         }
         figma.closePlugin();
     });
 }
-// TODO: show number of layers with that font
