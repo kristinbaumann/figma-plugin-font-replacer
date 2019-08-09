@@ -1,9 +1,5 @@
-figma.showUI(__html__);
-
-const initialSelection = figma.currentPage.selection.slice(0);
-
 function getTextNodesFrom(selection) {
-  var nodes = [];
+  const nodes = [];
   function childrenIterator(node) {
     if (node.children) {
       node.children.forEach(child => {
@@ -18,21 +14,17 @@ function getTextNodesFrom(selection) {
         });
     }
   }
-
   selection.forEach(item => childrenIterator(item));
   return nodes;
 }
 
-function renderContent(existingFonts) {
-  var message = { type: "render", existingFonts };
-  figma.ui.postMessage(message);
+function renderExistingFonts(existingFonts) {
+  figma.ui.postMessage({ type: "render-existing-fonts", existingFonts });
 }
 
 function getExistingFonts(selection) {
   const textNodes = getTextNodesFrom(selection);
-
   const existingFonts: FontName[] = [];
-
   textNodes.map(item => {
     const existingItem = existingFonts.filter(
       el => el.family === item.font.family && el.style === item.font.style
@@ -41,49 +33,66 @@ function getExistingFonts(selection) {
       existingFonts.push(item.font);
     }
   });
+  existingFonts.sort((a, b) => {
+    if (a.family < b.family) return -1;
+    if (a.family > b.family) return 1;
+    return 0;
+  });
   return existingFonts;
 }
-const existingFonts = getExistingFonts(initialSelection);
-renderContent(existingFonts);
 
-figma.ui.onmessage = async msg => {
-  if (msg.type === "replace-font") {
-    // get node selection
-    const selection = figma.currentPage.selection;
+async function renderAvailableFonts() {
+  const availableFonts = await figma.listAvailableFontsAsync();
+  figma.clientStorage.setAsync("available-fonts", availableFonts);
+  figma.ui.postMessage({ type: "render-available-fonts", availableFonts });
+}
 
-    // TODO: add check when no selection happens (and add comment in UI)
+const initialSelection = figma.currentPage.selection.slice(0);
 
-    // font to be replaced
-    const oldFont = existingFonts[msg.selectedOldFontId];
-    await figma.loadFontAsync(oldFont);
+if (initialSelection.length === 0) {
+  figma.showUI(__html__, { width: 320, height: 80 });
+  figma.ui.postMessage({ type: "empty-selection" });
+} else {
+  figma.showUI(__html__, { width: 320, height: 480 });
 
-    // TODO: get new font from UI
-    // new font
-    const newFont = {
-      style: "Regular",
-      family: "Roboto"
-    } as FontName;
-    await figma.loadFontAsync(newFont);
+  const existingFonts = getExistingFonts(initialSelection);
+  renderExistingFonts(existingFonts);
 
-    // get all text nodes
-    selection.forEach(async node => {
-      if (node.type === "TEXT") {
-        // check if existing font is the font to be replaced
-        console.log("oldFont", oldFont, "newFont", newFont);
-        if (
-          (node.fontName as FontName).family === oldFont.family &&
-          (node.fontName as FontName).style === oldFont.style
-        ) {
-          node.setRangeFontName(0, node.characters.length, newFont);
-          console.log("--- Replaced!");
-        } else {
-          console.log("*** Font not selected for replacement");
+  renderAvailableFonts();
+
+  figma.ui.onmessage = async msg => {
+    if (msg.type === "replace-font") {
+      // get node selection
+      const selection = figma.currentPage.selection;
+
+      // font to be replaced
+      const oldFont = existingFonts[msg.selectedOldFontId];
+      await figma.loadFontAsync(oldFont);
+
+      // get new font
+      const availableFonts = await figma.clientStorage.getAsync(
+        "available-fonts"
+      );
+      const newFont = availableFonts[msg.selectedNewFontId]
+        .fontName as FontName;
+      await figma.loadFontAsync(newFont);
+
+      // get all text nodes
+      selection.forEach(async node => {
+        if (node.type === "TEXT") {
+          // check if existing font is the font to be replaced
+          if (
+            (node.fontName as FontName).family === oldFont.family &&
+            (node.fontName as FontName).style === oldFont.style
+          ) {
+            node.setRangeFontName(0, node.characters.length, newFont);
+          }
         }
-      }
-    });
+      });
 
-    console.log("DONE!");
-  }
+      console.log("DONE!");
+    }
 
-  figma.closePlugin();
-};
+    figma.closePlugin();
+  };
+}

@@ -885,9 +885,9 @@
     text-indent: 24px;
   }
   .list {
-    /* height: 300px; */
+    height: 150px;
     overflow: auto;
-    margin: 16px -16px 0;
+    margin: 0 -16px;
     padding-bottom: 16px;
     border-bottom: solid 1px #d5d5d5;
   }
@@ -924,41 +924,31 @@
   .item.selected .icon {
     opacity: 1;
   }
+  .main-actions {
+    display: flex;
+    justify-content: space-between;
+  }
+  .button:hover:enabled {
+    cursor: pointer;
+  }
 </style>
 
 <form id="form">
-  <!-- <section id="empty" class="empty-state hidden">
-		<p class="type type--11-pos-bold">
-			Empty selection
-		</p>
-		<p class="type type--11-pos-medium">
-			Select some text layers, groups or frames and run Content Buddy again.
-		</p>
-	</section> -->
+  <section id="empty" class="empty-state hidden">
+    <p class="type type--11-pos-medium">
+      Please select some text layers and run Font Replacer again.
+    </p>
+  </section>
 
   <section id="content">
     <fieldset>
-      <p class="type type--11-pos-bold">
-        Select existing font (to be replaced)
-      </p>
-      <!-- <label class="search">
-				<div class="icon icon--search"></div>
-				<input id="query" type="text" class="input" placeholder="Search content">
-			</label> -->
+      <p class="type type--11-pos-bold">Select old font:</p>
       <ul class="list" id="existing-fonts"></ul>
     </fieldset>
 
     <fieldset>
-      <p class="type type--11-pos-bold">Select new content</p>
-      <label class="search">
-        <div class="icon icon--search"></div>
-        <input
-          id="query"
-          type="text"
-          class="input"
-          placeholder="Search fonts"
-        />
-      </label>
+      <p class="type type--11-pos-bold">Select new font:</p>
+      <ul class="list" id="available-fonts"></ul>
     </fieldset>
 
     <section class="main-actions">
@@ -980,13 +970,28 @@
 <script>
   const buttonReplace = document.getElementById("replace-font");
   const listExistingFont = document.getElementById("existing-fonts");
+  const listAvailableFont = document.getElementById("available-fonts");
+
+  let isExistingFontSelected = false;
+  let isAvailableFontSelected = false;
 
   document.getElementById("replace-font").onclick = () => {
     const selectedOldFontId = listExistingFont
       .querySelectorAll(".selected")[0]
       .getAttribute("idx");
+
+    const selectedNewFontId = listAvailableFont
+      .querySelectorAll(".selected")[0]
+      .getAttribute("idx");
+
     parent.postMessage(
-      { pluginMessage: { type: "replace-font", selectedOldFontId } },
+      {
+        pluginMessage: {
+          type: "replace-font",
+          selectedOldFontId,
+          selectedNewFontId
+        }
+      },
       "*"
     );
   };
@@ -995,26 +1000,63 @@
     parent.postMessage({ pluginMessage: { type: "cancel" } }, "*");
   };
 
+  function checkButtonStatus() {
+    if (isExistingFontSelected && isAvailableFontSelected) {
+      buttonReplace.removeAttribute("disabled");
+    } else {
+      buttonReplace.setAttribute("disabled", "");
+    }
+  }
+
   // Click handlers for existing fonts
   listExistingFont.addEventListener("click", e => {
     if (e.target.nodeName == "LI") {
       if (e.target.classList.contains("selected")) {
         e.target.classList.remove("selected");
-        buttonReplace.setAttribute("disabled", "");
+        isExistingFontSelected = false;
+        checkButtonStatus();
       } else {
         var idx = parseInt(e.target.getAttribute("idx"));
         listExistingFont
           .querySelectorAll(".selected")
           .forEach(elem => elem.classList.remove("selected"));
         e.target.classList.add("selected");
-        buttonReplace.removeAttribute("disabled");
+        isExistingFontSelected = true;
+        checkButtonStatus();
+      }
+    }
+  });
+
+  // Click handlers for available fonts
+  listAvailableFont.addEventListener("click", e => {
+    if (e.target.nodeName == "LI") {
+      if (e.target.classList.contains("selected")) {
+        e.target.classList.remove("selected");
+        isAvailableFontSelected = false;
+        checkButtonStatus();
+      } else {
+        var idx = parseInt(e.target.getAttribute("idx"));
+        listAvailableFont
+          .querySelectorAll(".selected")
+          .forEach(elem => elem.classList.remove("selected"));
+        e.target.classList.add("selected");
+        isAvailableFontSelected = true;
+        checkButtonStatus();
       }
     }
   });
 
   onmessage = e => {
     var msg = event.data.pluginMessage;
-    if (msg.type === "render") {
+
+    // render empty UI when no text layers selected
+    if (msg.type === "empty-selection") {
+      content.classList.add("hidden");
+      empty.classList.remove("hidden");
+    }
+
+    // render old fonts
+    if (msg.type === "render-existing-fonts") {
       function elem(item, idx) {
         return `
           <li class="item" idx="${idx}">
@@ -1025,6 +1067,21 @@
       }
       listExistingFont.innerHTML = msg.existingFonts.reduce(
         (buffer, item, idx) => (buffer += elem(item, idx)),
+        ""
+      );
+    }
+    // render new fonts
+    if (msg.type === "render-available-fonts") {
+      function elem(item, idx) {
+        return `
+          <li class="item" idx="${idx}"  key="${item.family}">
+            <div class="icon icon--recent icon--blue"></div>
+  				<p class="type type--11-pos">${item.family} - ${item.style}</p>
+  			</li>
+  		`;
+      }
+      listAvailableFont.innerHTML = msg.availableFonts.reduce(
+        (buffer, item, idx) => (buffer += elem(item.fontName, idx)),
         ""
       );
     }

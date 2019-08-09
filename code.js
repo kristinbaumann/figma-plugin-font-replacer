@@ -6,10 +6,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-figma.showUI(__html__);
-const initialSelection = figma.currentPage.selection.slice(0);
 function getTextNodesFrom(selection) {
-    var nodes = [];
+    const nodes = [];
     function childrenIterator(node) {
         if (node.children) {
             node.children.forEach(child => {
@@ -28,9 +26,8 @@ function getTextNodesFrom(selection) {
     selection.forEach(item => childrenIterator(item));
     return nodes;
 }
-function renderContent(existingFonts) {
-    var message = { type: "render", existingFonts };
-    figma.ui.postMessage(message);
+function renderExistingFonts(existingFonts) {
+    figma.ui.postMessage({ type: "render-existing-fonts", existingFonts });
 }
 function getExistingFonts(selection) {
     const textNodes = getTextNodesFrom(selection);
@@ -41,41 +38,56 @@ function getExistingFonts(selection) {
             existingFonts.push(item.font);
         }
     });
+    existingFonts.sort((a, b) => {
+        if (a.family < b.family)
+            return -1;
+        if (a.family > b.family)
+            return 1;
+        return 0;
+    });
     return existingFonts;
 }
-const existingFonts = getExistingFonts(initialSelection);
-renderContent(existingFonts);
-figma.ui.onmessage = (msg) => __awaiter(this, void 0, void 0, function* () {
-    if (msg.type === "replace-font") {
-        // get node selection
-        const selection = figma.currentPage.selection;
-        // TODO: add check when no selection happens (and add comment in UI)
-        // font to be replaced
-        const oldFont = existingFonts[msg.selectedOldFontId];
-        yield figma.loadFontAsync(oldFont);
-        // TODO: get new font from UI
-        // new font
-        const newFont = {
-            style: "Regular",
-            family: "Roboto"
-        };
-        yield figma.loadFontAsync(newFont);
-        // get all text nodes
-        selection.forEach((node) => __awaiter(this, void 0, void 0, function* () {
-            if (node.type === "TEXT") {
-                // check if existing font is the font to be replaced
-                console.log("oldFont", oldFont, "newFont", newFont);
-                if (node.fontName.family === oldFont.family &&
-                    node.fontName.style === oldFont.style) {
-                    node.setRangeFontName(0, node.characters.length, newFont);
-                    console.log("--- Replaced!");
+function renderAvailableFonts() {
+    return __awaiter(this, void 0, void 0, function* () {
+        const availableFonts = yield figma.listAvailableFontsAsync();
+        figma.clientStorage.setAsync("available-fonts", availableFonts);
+        figma.ui.postMessage({ type: "render-available-fonts", availableFonts });
+    });
+}
+const initialSelection = figma.currentPage.selection.slice(0);
+if (initialSelection.length === 0) {
+    figma.showUI(__html__, { width: 320, height: 80 });
+    figma.ui.postMessage({ type: "empty-selection" });
+}
+else {
+    figma.showUI(__html__, { width: 320, height: 480 });
+    const existingFonts = getExistingFonts(initialSelection);
+    renderExistingFonts(existingFonts);
+    renderAvailableFonts();
+    figma.ui.onmessage = (msg) => __awaiter(this, void 0, void 0, function* () {
+        if (msg.type === "replace-font") {
+            // get node selection
+            const selection = figma.currentPage.selection;
+            // font to be replaced
+            const oldFont = existingFonts[msg.selectedOldFontId];
+            yield figma.loadFontAsync(oldFont);
+            // get new font
+            const availableFonts = yield figma.clientStorage.getAsync("available-fonts");
+            const newFont = availableFonts[msg.selectedNewFontId]
+                .fontName;
+            yield figma.loadFontAsync(newFont);
+            // get all text nodes
+            selection.forEach((node) => __awaiter(this, void 0, void 0, function* () {
+                if (node.type === "TEXT") {
+                    // check if existing font is the font to be replaced
+                    if (node.fontName.family === oldFont.family &&
+                        node.fontName.style === oldFont.style) {
+                        node.setRangeFontName(0, node.characters.length, newFont);
+                    }
                 }
-                else {
-                    console.log("*** Font not selected for replacement");
-                }
-            }
-        }));
-        console.log("DONE!");
-    }
-    figma.closePlugin();
-});
+            }));
+            console.log("DONE!");
+        }
+        figma.closePlugin();
+    });
+}
