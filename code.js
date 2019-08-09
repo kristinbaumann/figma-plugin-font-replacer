@@ -49,7 +49,8 @@ function getExistingFonts(selection) {
 }
 function renderAvailableFonts() {
     return __awaiter(this, void 0, void 0, function* () {
-        const availableFonts = yield figma.listAvailableFontsAsync();
+        let availableFonts = yield figma.listAvailableFontsAsync();
+        availableFonts = availableFonts.filter(el => el.fontName.family[0] != ".");
         figma.clientStorage.setAsync("available-fonts", availableFonts);
         figma.ui.postMessage({ type: "render-available-fonts", availableFonts });
     });
