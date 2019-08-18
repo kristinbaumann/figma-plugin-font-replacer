@@ -948,7 +948,7 @@
   <section id="content">
     <div id="content-fonts">
       <fieldset>
-        <p class="type type--11-pos-bold">Select old font:</p>
+        <p class="type type--11-pos-bold">Select old font(s):</p>
         <ul class="list" id="existing-fonts"></ul>
       </fieldset>
 
@@ -983,9 +983,10 @@
   let isAvailableFontSelected = false;
 
   document.getElementById("replace-font").onclick = () => {
-    const selectedOldFontId = listExistingFont
-      .querySelectorAll(".selected")[0]
-      .getAttribute("idx");
+    const selectedOldFontIds = [];
+    listExistingFont
+      .querySelectorAll(".selected")
+      .forEach(el => selectedOldFontIds.push(el.getAttribute("idx")));
 
     const selectedNewFontId = listAvailableFont
       .querySelectorAll(".selected")[0]
@@ -995,7 +996,7 @@
       {
         pluginMessage: {
           type: "replace-font",
-          selectedOldFontId,
+          selectedOldFontIds,
           selectedNewFontId
         }
       },
@@ -1020,17 +1021,14 @@
     if (e.target.nodeName == "LI") {
       if (e.target.classList.contains("selected")) {
         e.target.classList.remove("selected");
-        isExistingFontSelected = false;
-        checkButtonStatus();
       } else {
         var idx = parseInt(e.target.getAttribute("idx"));
-        listExistingFont
-          .querySelectorAll(".selected")
-          .forEach(elem => elem.classList.remove("selected"));
         e.target.classList.add("selected");
-        isExistingFontSelected = true;
-        checkButtonStatus();
       }
+
+      isExistingFontSelected =
+        listExistingFont.querySelectorAll(".selected").length > 0;
+      checkButtonStatus();
     }
   });
 
@@ -1040,7 +1038,6 @@
       if (e.target.classList.contains("selected")) {
         e.target.classList.remove("selected");
         isAvailableFontSelected = false;
-        checkButtonStatus();
       } else {
         var idx = parseInt(e.target.getAttribute("idx"));
         listAvailableFont
@@ -1048,8 +1045,8 @@
           .forEach(elem => elem.classList.remove("selected"));
         e.target.classList.add("selected");
         isAvailableFontSelected = true;
-        checkButtonStatus();
       }
+      checkButtonStatus();
     }
   });
 

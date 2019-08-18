@@ -105,13 +105,16 @@ else {
         if (msg.type === "replace-font") {
             // get node selection
             const selection = figma.currentPage.selection;
-            // get old font
-            const oldFontCounter = existingFonts[msg.selectedOldFontId];
-            const oldFont = {
-                family: oldFontCounter.family,
-                style: oldFontCounter.style
-            };
-            yield figma.loadFontAsync(oldFont);
+            // get old fonts
+            const oldFonts = [];
+            msg.selectedOldFontIds.forEach((fontId) => __awaiter(this, void 0, void 0, function* () {
+                const oldFont = {
+                    family: existingFonts[fontId].family,
+                    style: existingFonts[fontId].style
+                };
+                oldFonts.push(oldFont);
+                yield figma.loadFontAsync(oldFont);
+            }));
             // get new font
             const availableFonts = yield figma.clientStorage.getAsync("available-fonts");
             const newFont = availableFonts[msg.selectedNewFontId]
@@ -130,18 +133,22 @@ else {
                             // loop through characters of this text node
                             for (let i = 0; i < node.characters.length; i++) {
                                 const fontOfCharacter = node.getRangeFontName(i, i + 1);
-                                if (fontOfCharacter.family === oldFont.family &&
-                                    fontOfCharacter.style === oldFont.style) {
-                                    node.setRangeFontName(i, i + 1, newFont);
-                                }
+                                oldFonts.forEach(oldFont => {
+                                    if (fontOfCharacter.family === oldFont.family &&
+                                        fontOfCharacter.style === oldFont.style) {
+                                        node.setRangeFontName(i, i + 1, newFont);
+                                    }
+                                });
                             }
                         }
                         else {
                             // check if existing font is the font to be replaced
-                            if (node.fontName.family === oldFont.family &&
-                                node.fontName.style === oldFont.style) {
-                                node.setRangeFontName(0, node.characters.length, newFont);
-                            }
+                            oldFonts.forEach(oldFont => {
+                                if (node.fontName.family === oldFont.family &&
+                                    node.fontName.style === oldFont.style) {
+                                    node.setRangeFontName(0, node.characters.length, newFont);
+                                }
+                            });
                         }
                     }
                 }
