@@ -4,28 +4,22 @@
     font-family: Inter;
     font-style: normal;
     font-weight: 400;
-    src: url(https://rsms.me/inter/font-files/Inter-Regular.woff2?v=3.7)
-        format("woff2"),
-      url(https://rsms.me/inter/font-files/Inter-Regular.woff?v=3.7)
-        format("woff");
+    src: url(https://rsms.me/inter/font-files/Inter-Regular.woff2?v=3.7) format("woff2"),
+      url(https://rsms.me/inter/font-files/Inter-Regular.woff?v=3.7) format("woff");
   }
   @font-face {
     font-family: Inter;
     font-style: normal;
     font-weight: 500;
-    src: url(https://rsms.me/inter/font-files/Inter-Medium.woff2?v=3.7)
-        format("woff2"),
-      url(https://rsms.me/inter/font-files/Inter-Medium.woff2?v=3.7)
-        format("woff");
+    src: url(https://rsms.me/inter/font-files/Inter-Medium.woff2?v=3.7) format("woff2"),
+      url(https://rsms.me/inter/font-files/Inter-Medium.woff2?v=3.7) format("woff");
   }
   @font-face {
     font-family: Inter;
     font-style: normal;
     font-weight: 600;
-    src: url(https://rsms.me/inter/font-files/Inter-SemiBold.woff2?v=3.7)
-        format("woff2"),
-      url(https://rsms.me/inter/font-files/Inter-SemiBold.woff2?v=3.7)
-        format("woff");
+    src: url(https://rsms.me/inter/font-files/Inter-SemiBold.woff2?v=3.7) format("woff2"),
+      url(https://rsms.me/inter/font-files/Inter-SemiBold.woff2?v=3.7) format("woff");
   }
   .icon {
     width: 32px;
@@ -633,8 +627,7 @@
     list-style-type: none;
     pointer-events: none;
     opacity: 0;
-    -webkit-box-shadow: 0 5px 17px rgba(0, 0, 0, 0.2),
-      0 2px 7px rgba(0, 0, 0, 0.15);
+    -webkit-box-shadow: 0 5px 17px rgba(0, 0, 0, 0.2), 0 2px 7px rgba(0, 0, 0, 0.15);
     box-shadow: 0 5px 17px rgba(0, 0, 0, 0.2), 0 2px 7px rgba(0, 0, 0, 0.15);
   }
   .select-dropdown__list:before {
@@ -949,11 +942,13 @@
     <div id="content-fonts">
       <fieldset>
         <p class="type type--11-pos-bold">Select old font(s):</p>
+        <input class="input" placeholder="Search" id="old-fonts-search" />
         <ul class="list" id="existing-fonts"></ul>
       </fieldset>
 
       <fieldset>
         <p class="type type--11-pos-bold">Select new font:</p>
+        <input class="input" placeholder="Search" id="new-fonts-search" />
         <ul class="list" id="available-fonts"></ul>
       </fieldset>
     </div>
@@ -962,12 +957,7 @@
       <button id="cancel" type="button" class="button button--secondary">
         Cancel
       </button>
-      <button
-        id="replace-font"
-        type="button"
-        class="button button--primary"
-        disabled
-      >
+      <button id="replace-font" type="button" class="button button--primary" disabled>
         Replace
       </button>
     </section>
@@ -975,121 +965,152 @@
 </form>
 
 <script>
-  const buttonReplace = document.getElementById("replace-font");
-  const listExistingFont = document.getElementById("existing-fonts");
-  const listAvailableFont = document.getElementById("available-fonts");
+  const buttonReplace = document.getElementById("replace-font")
+  const listExistingFont = document.getElementById("existing-fonts")
+  const listAvailableFont = document.getElementById("available-fonts")
 
-  let isExistingFontSelected = false;
-  let isAvailableFontSelected = false;
+  let isExistingFontSelected = false
+  let isAvailableFontSelected = false
+
+  const existingFontsSearchInput = document.getElementById("old-fonts-search")
+  const availableFontsSearchInput = document.getElementById("new-fonts-search")
+  let existingFontsSearch = ""
+  let availableFontsSearch = ""
+
+  let existingFonts = []
+  let availableFonts = []
 
   document.getElementById("replace-font").onclick = () => {
-    const selectedOldFontIds = [];
+    const selectedOldFontIds = []
     listExistingFont
       .querySelectorAll(".selected")
-      .forEach(el => selectedOldFontIds.push(el.getAttribute("idx")));
+      .forEach((el) => selectedOldFontIds.push(el.getAttribute("idx")))
 
-    const selectedNewFontId = listAvailableFont
-      .querySelectorAll(".selected")[0]
-      .getAttribute("idx");
+    const selectedNewFontId = listAvailableFont.querySelectorAll(".selected")[0].getAttribute("idx")
 
     parent.postMessage(
       {
         pluginMessage: {
           type: "replace-font",
           selectedOldFontIds,
-          selectedNewFontId
-        }
+          selectedNewFontId,
+        },
       },
       "*"
-    );
-  };
+    )
+  }
 
   document.getElementById("cancel").onclick = () => {
-    parent.postMessage({ pluginMessage: { type: "cancel" } }, "*");
-  };
+    parent.postMessage({ pluginMessage: { type: "cancel" } }, "*")
+  }
 
   function checkButtonStatus() {
     if (isExistingFontSelected && isAvailableFontSelected) {
-      buttonReplace.removeAttribute("disabled");
+      buttonReplace.removeAttribute("disabled")
     } else {
-      buttonReplace.setAttribute("disabled", "");
+      buttonReplace.setAttribute("disabled", "")
     }
   }
 
   // Click handlers for existing fonts
-  listExistingFont.addEventListener("click", e => {
+  listExistingFont.addEventListener("click", (e) => {
     if (e.target.nodeName == "LI") {
       if (e.target.classList.contains("selected")) {
-        e.target.classList.remove("selected");
+        e.target.classList.remove("selected")
       } else {
-        var idx = parseInt(e.target.getAttribute("idx"));
-        e.target.classList.add("selected");
+        var idx = parseInt(e.target.getAttribute("idx"))
+        e.target.classList.add("selected")
       }
 
-      isExistingFontSelected =
-        listExistingFont.querySelectorAll(".selected").length > 0;
-      checkButtonStatus();
+      isExistingFontSelected = listExistingFont.querySelectorAll(".selected").length > 0
+      checkButtonStatus()
     }
-  });
+  })
 
   // Click handlers for available fonts
-  listAvailableFont.addEventListener("click", e => {
+  listAvailableFont.addEventListener("click", (e) => {
     if (e.target.nodeName == "LI") {
       if (e.target.classList.contains("selected")) {
-        e.target.classList.remove("selected");
-        isAvailableFontSelected = false;
+        e.target.classList.remove("selected")
+        isAvailableFontSelected = false
       } else {
-        var idx = parseInt(e.target.getAttribute("idx"));
+        var idx = parseInt(e.target.getAttribute("idx"))
         listAvailableFont
           .querySelectorAll(".selected")
-          .forEach(elem => elem.classList.remove("selected"));
-        e.target.classList.add("selected");
-        isAvailableFontSelected = true;
+          .forEach((elem) => elem.classList.remove("selected"))
+        e.target.classList.add("selected")
+        isAvailableFontSelected = true
       }
-      checkButtonStatus();
+      checkButtonStatus()
     }
-  });
+  })
 
-  onmessage = e => {
-    var msg = event.data.pluginMessage;
+  onmessage = (e) => {
+    var msg = event.data.pluginMessage
 
     // render empty UI when no text layers selected
     if (msg.type === "empty-selection") {
-      content.classList.add("hidden");
-      empty.classList.remove("hidden");
+      content.classList.add("hidden")
+      empty.classList.remove("hidden")
     }
 
     // render old fonts
     if (msg.type === "render-existing-fonts") {
-      function elem(item, idx) {
-        return `
-          <li class="item" idx="${idx}">
-            <div class="icon icon--recent icon--blue"></div>
-  				<p class="type type--11-pos">${item.family} - ${item.style} (${
-          item.amount
-        }x)</p>
-  			</li>
-  		`;
-      }
-      listExistingFont.innerHTML = msg.existingFonts.reduce(
-        (buffer, item, idx) => (buffer += elem(item, idx)),
-        ""
-      );
+      existingFonts = msg.existingFonts
+      renderExistingFonts()
     }
     // render new fonts
     if (msg.type === "render-available-fonts") {
-      function elem(item, idx) {
-        return `
+      availableFonts = msg.availableFonts
+      renderAvailableFonts()
+    }
+  }
+
+  // Render methods
+  function renderExistingFonts() {
+    function elem(item, idx) {
+      return `
+          <li class="item" idx="${idx}">
+            <div class="icon icon--recent icon--blue"></div>
+  				<p class="type type--11-pos">${item.family} - ${item.style} (${item.amount}x)</p>
+  			</li>
+  		`
+    }
+    listExistingFont.innerHTML = existingFonts.reduce((buffer, item, idx) => {
+      // Filter fonts based on the search value
+      if (item.family.toLowerCase().includes(existingFontsSearch)) {
+        buffer += elem(item, idx)
+      }
+      return buffer
+    }, "")
+  }
+
+  function renderAvailableFonts() {
+    function elem(item, idx) {
+      return `
           <li class="item" idx="${idx}"  key="${item.family}">
             <div class="icon icon--recent icon--blue"></div>
   				<p class="type type--11-pos">${item.family} - ${item.style}</p>
   			</li>
-  		`;
-      }
-      listAvailableFont.innerHTML = msg.availableFonts.reduce(
-        (buffer, item, idx) => (buffer += elem(item.fontName, idx)),
-        ""
-      );
+  		`
     }
-  };
+    listAvailableFont.innerHTML = availableFonts.reduce((buffer, item, idx) => {
+      // Filter fonts based on the search value
+      if (item.fontName.family.toLowerCase().includes(availableFontsSearch)) {
+        buffer += elem(item.fontName, idx)
+      }
+      return buffer
+    }, "")
+  }
+
+  // Update search variables and re-render the font lists
+  existingFontsSearchInput.addEventListener("input", function () {
+    existingFontsSearch = existingFontsSearchInput.value.toLowerCase()
+    renderExistingFonts()
+  })
+
+  availableFontsSearchInput.addEventListener("input", function () {
+    availableFontsSearch = availableFontsSearchInput.value.toLowerCase()
+    renderAvailableFonts()
+  })
 </script>
