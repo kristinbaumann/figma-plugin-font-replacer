@@ -10,14 +10,14 @@ function getTextNodesFrom(selection) {
   const nodes = [];
   function childrenIterator(node) {
     if (node.children) {
-      node.children.forEach(child => {
+      node.children.forEach((child) => {
         childrenIterator(child);
       });
     } else {
       if (node.type === "TEXT") nodes.push(node);
     }
   }
-  selection.forEach(item => childrenIterator(item));
+  selection.forEach((item) => childrenIterator(item));
   return nodes;
 }
 
@@ -25,7 +25,7 @@ function getExistingFonts(textNodes) {
   const existingFonts: FontNameCounter[] = [];
 
   // loop through all text nodes
-  textNodes.forEach(node => {
+  textNodes.forEach((node) => {
     const font = node.fontName;
 
     // if node has missed font families
@@ -37,15 +37,15 @@ function getExistingFonts(textNodes) {
         const item = { ...fontOfCharacter };
 
         const existingMixedFontItem = mixedFonts.filter(
-          el => el.family === item.family && el.style === item.style
+          (el) => el.family === item.family && el.style === item.style
         );
         if (existingMixedFontItem.length === 0) mixedFonts.push(item);
       }
 
-      mixedFonts.forEach(font => {
+      mixedFonts.forEach((font) => {
         const item = { ...font, amount: 1 };
         const existingItem = existingFonts.filter(
-          el => el.family === item.family && el.style === item.style
+          (el) => el.family === item.family && el.style === item.style
         );
         if (existingItem.length === 0) {
           existingFonts.push(item);
@@ -57,7 +57,7 @@ function getExistingFonts(textNodes) {
       // when text node has a single font family and style
       const item = { ...font, amount: 1 };
       const existingItem = existingFonts.filter(
-        el => el.family === item.family && el.style === item.style
+        (el) => el.family === item.family && el.style === item.style
       );
       if (existingItem.length === 0) {
         existingFonts.push(item);
@@ -90,7 +90,7 @@ function renderExistingFonts(existingFonts) {
 async function renderAvailableFonts() {
   let availableFonts = await figma.listAvailableFontsAsync();
   availableFonts = availableFonts.filter(
-    el => el.fontName.family[0] != "?" && el.fontName.family[0] != "."
+    (el) => el.fontName.family[0] != "?" && el.fontName.family[0] != "."
   );
   figma.clientStorage.setAsync("available-fonts", availableFonts);
   figma.ui.postMessage({ type: "render-available-fonts", availableFonts });
@@ -104,7 +104,7 @@ if (initialSelection.length === 0 || textNodes.length === 0) {
   figma.showUI(__html__, { width: 320, height: 80 });
   figma.ui.postMessage({ type: "empty-selection" });
 } else {
-  figma.showUI(__html__, { width: 500, height: 370 });
+  figma.showUI(__html__, { width: 500, height: 500 });
 
   // get existing fonts
   const existingFonts = getExistingFonts(textNodes);
@@ -113,17 +113,17 @@ if (initialSelection.length === 0 || textNodes.length === 0) {
   // get available fonts
   renderAvailableFonts();
 
-  figma.ui.onmessage = async msg => {
+  figma.ui.onmessage = async (msg) => {
     if (msg.type === "replace-font") {
       // get node selection
       const selection = figma.currentPage.selection;
 
       // get old fonts
       const oldFonts: FontName[] = [];
-      msg.selectedOldFontIds.forEach(async fontId => {
+      msg.selectedOldFontIds.forEach(async (fontId) => {
         const oldFont = {
           family: existingFonts[fontId].family,
-          style: existingFonts[fontId].style
+          style: existingFonts[fontId].style,
         } as FontName;
         oldFonts.push(oldFont);
         await figma.loadFontAsync(oldFont);
@@ -140,7 +140,7 @@ if (initialSelection.length === 0 || textNodes.length === 0) {
       // replace all text nodes
       function childrenIterator(node) {
         if (node.children) {
-          node.children.forEach(child => {
+          node.children.forEach((child) => {
             childrenIterator(child);
           });
         } else {
@@ -150,7 +150,7 @@ if (initialSelection.length === 0 || textNodes.length === 0) {
               for (let i = 0; i < node.characters.length; i++) {
                 const fontOfCharacter = node.getRangeFontName(i, i + 1);
 
-                oldFonts.forEach(oldFont => {
+                oldFonts.forEach((oldFont) => {
                   if (
                     fontOfCharacter.family === oldFont.family &&
                     fontOfCharacter.style === oldFont.style
@@ -161,7 +161,7 @@ if (initialSelection.length === 0 || textNodes.length === 0) {
               }
             } else {
               // check if existing font is the font to be replaced
-              oldFonts.forEach(oldFont => {
+              oldFonts.forEach((oldFont) => {
                 if (
                   (node.fontName as FontName).family === oldFont.family &&
                   (node.fontName as FontName).style === oldFont.style
@@ -173,7 +173,7 @@ if (initialSelection.length === 0 || textNodes.length === 0) {
           }
         }
       }
-      selection.forEach(item => childrenIterator(item));
+      selection.forEach((item) => childrenIterator(item));
     }
 
     figma.closePlugin();
